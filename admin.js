@@ -99,7 +99,7 @@ function openEditor(p=null){
   editingId=p?.id||null; existingImages=[...(p?.images||[])]; newFiles=[];
   $("editorTitle").textContent=editingId?"Edit dress":"Add new dress";
   $("pName").value=p?.name||""; $("pCategory").value=p?.category||"Dress";
-  $("pDescription").value=p?.description||""; $("pSizes").value=(p?.sizes||[]).join(", ");
+  $("pDescription").value=p?.description||""; $("pSizes").value=(p?.sizes||[]).join(", "); $("pPrice").value=p?.price||""; $("pOldPrice").value=p?.old_price||"";
   $("pPublished").checked=p?.is_published!==false; $("pImages").value="";
   renderPhotos();
   $("saveMsg").textContent="";
@@ -161,6 +161,8 @@ $("productForm").addEventListener("submit",async e=>{
     const uploaded=[...existingImages];
     for(const file of newFiles) uploaded.push(await uploadFile(file));
     const payload={
+      price: Number($("pPrice").value) || null,
+old_price: Number($("pOldPrice").value) || null,
       name,
       category:$("pCategory").value.trim(),
       description:$("pDescription").value.trim(),
