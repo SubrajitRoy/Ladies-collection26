@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Ladies Collection admin dashboard">
+  <title>Admin Dashboard — Ladies Collection</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="loginView" class="auth-shell">
+    <div class="auth-card">
+      <div class="brand-mark">LC</div>
+      <p class="eyebrow">LADIES COLLECTION</p>
+      <h1>Admin sign in</h1>
+      <p class="muted">Manage dresses, photos and WhatsApp ordering settings.</p>
+      <form id="loginForm">
+        <label>Email
+          <input id="email" type="email" autocomplete="username" placeholder="Admin email" required>
+        </label>
+        <label>Password
+          <input id="password" type="password" autocomplete="current-password" placeholder="Password" required>
+        </label>
+        <button class="btn primary full" type="submit">Sign in</button>
+      </form>
+      <p id="loginMsg" class="message"></p>
+    </div>
+  </div>
+
+  <div id="appView" class="hidden">
+    <header class="topbar">
+      <a class="brand" href="index.html"><span class="brand-dot">LC</span> Ladies <strong>Collection</strong></a>
+      <div class="top-actions">
+        <a class="view-site" href="index.html" target="_blank" rel="noopener">View website ↗</a>
+        <button id="logoutBtn" class="btn dark">Logout</button>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <section class="welcome-row">
+        <div>
+          <p class="eyebrow">ADMIN PANEL</p>
+          <h1>Manage your collection</h1>
+          <p class="muted">Add dresses, upload multiple photos and control what customers see.</p>
+        </div>
+        <button id="addProductBtn" class="btn primary big">＋ Add new dress</button>
+      </section>
+
+      <section class="stats">
+        <div class="stat-card"><span>Total products</span><strong id="totalCount">0</strong></div>
+        <div class="stat-card"><span>Published</span><strong id="publishedCount">0</strong></div>
+        <div class="stat-card"><span>Hidden</span><strong id="hiddenCount">0</strong></div>
+      </section>
+
+      <section class="panel settings-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">ORDER SETTINGS</p>
+            <h2>WhatsApp number</h2>
+          </div>
+          <span id="waStatus" class="status-dot">● Ready</span>
+        </div>
+        <div class="settings-row">
+          <div class="input-with-prefix"><span>+</span><input id="waNumber" inputmode="numeric" placeholder="919876543210"></div>
+          <button id="saveWaBtn" class="btn primary">Save number</button>
+        </div>
+        <p class="hint">Use country code without + or spaces. Example: 919876543210</p>
+        <p id="waMsg" class="message"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">YOUR PRODUCTS</p>
+            <h2>Collection</h2>
+          </div>
+          <div id="productCountLabel" class="muted small"></div>
+        </div>
+        <div id="productList" class="product-list"></div>
+        <div id="emptyProducts" class="empty hidden">
+          <div class="empty-icon">＋</div>
+          <h3>No dresses yet</h3>
+          <p>Add your first dress and upload its photos.</p>
+          <button class="btn primary" id="emptyAddBtn">Add first dress</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="editorModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <button id="closeEditorBtn" class="icon-btn" aria-label="Close">×</button>
+      <div class="modal-header">
+        <p class="eyebrow">PRODUCT</p>
+        <h2 id="editorTitle">Add new dress</h2>
+        <p class="muted">Fill in the details and add up to 4 photos.</p>
+      </div>
+
+      <form id="productForm">
+        <div class="form-grid">
+          <label>Dress name
+            <input id="pName" required maxlength="100" placeholder="e.g. Floral Cotton Dress">
+          </label>
+          <label>Category
+            <input id="pCategory" maxlength="60" placeholder="Dress, Kurti, Saree...">
+          </label>
+        </div>
+
+        <label>Description
+          <textarea id="pDescription" rows="4" maxlength="500" placeholder="Short description of the dress"></textarea>
+        </label>
+
+        <label>Available sizes
+          <input id="pSizes" placeholder="S, M, L, XL, XXL">
+        </label>
+
+        <div class="upload-box">
+          <div class="upload-head">
+            <div>
+              <strong>Dress photos</strong>
+              <span>Up to 4 photos. The first photo is the main photo.</span>
+            </div>
+            <label class="btn outline upload-btn">＋ Choose photos
+              <input id="pImages" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden>
+            </label>
+          </div>
+          <div id="photoPreview" class="photo-grid"></div>
+          <p class="hint">Tip: use clear vertical product photos. Maximum 5 MB per photo.</p>
+        </div>
+
+        <label class="switch-row">
+          <input id="pPublished" type="checkbox" checked>
+          <span class="switch"></span>
+          <span><strong>Published</strong><small>Customers can see this dress on the website.</small></span>
+        </label>
+
+        <div class="form-actions">
+          <button type="button" id="cancelEditorBtn" class="btn outline">Cancel</button>
+          <button type="submit" id="saveProductBtn" class="btn primary">Save dress</button>
+        </div>
+        <p id="saveMsg" class="message"></p>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

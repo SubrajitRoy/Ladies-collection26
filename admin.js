@@ -1,0 +1,197 @@
+const CONFIG = {
+  SUPABASE_URL: "https://epceiyujnkqfqcepiyhi.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_l55MEex8L_TKB6ZiHvUqpA_evd3LBej"
+};
+
+const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+let products = [];
+let editingId = null;
+let existingImages = [];
+let newFiles = [];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const toast = text => { $("toast").textContent=text; $("toast").classList.remove("hidden"); setTimeout(()=> $("toast").classList.add("hidden"),2200); };
+
+async function isAdmin(){
+  const {data:{user}} = await sb.auth.getUser();
+  if(!user) return false;
+  const {data,error} = await sb.from("admin_users").select("user_id").eq("user_id",user.id).maybeSingle();
+  return !error && !!data;
+}
+
+async function boot(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ showLogin(); return; }
+  if(!(await isAdmin())){ await sb.auth.signOut(); showLogin("This account is not an admin."); return; }
+  showApp();
+  await Promise.all([loadSettings(),loadProducts()]);
+}
+
+function showLogin(message=""){
+  $("loginView").classList.remove("hidden"); $("appView").classList.add("hidden");
+  if(message) $("loginMsg").textContent=message;
+}
+function showApp(){ $("loginView").classList.add("hidden"); $("appView").classList.remove("hidden"); }
+
+$("loginForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  $("loginMsg").textContent="Signing in…";
+  const {error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+  if(error){$("loginMsg").textContent=error.message;return}
+  if(!(await isAdmin())){await sb.auth.signOut();$("loginMsg").textContent="This account is not registered as an admin.";return}
+  showApp(); await Promise.all([loadSettings(),loadProducts()]);
+});
+
+$("logoutBtn").onclick=async()=>{await sb.auth.signOut();location.reload()};
+
+async function loadSettings(){
+  const {data,error}=await sb.from("site_settings").select("whatsapp_number").eq("id",1).maybeSingle();
+  if(error){$("waMsg").textContent=error.message;return}
+  $("waNumber").value=data?.whatsapp_number||"";
+}
+
+$("saveWaBtn").onclick=async()=>{
+  const v=$("waNumber").value.replace(/\D/g,"");
+  if(v.length<10){$("waMsg").textContent="Enter a valid WhatsApp number with country code.";return}
+  $("saveWaBtn").disabled=true; $("waMsg").textContent="Saving…";
+  const {error}=await sb.from("site_settings").update({whatsapp_number:v}).eq("id",1);
+  $("saveWaBtn").disabled=false;
+  if(error){$("waMsg").textContent=error.message;return}
+  $("waMsg").textContent="WhatsApp number saved successfully.";
+  toast("WhatsApp number updated");
+};
+
+async function loadProducts(){
+  const {data,error}=await sb.from("products").select("*").order("created_at",{ascending:false});
+  if(error){toast(error.message);return}
+  products=data||[];
+  renderProducts();
+  $("totalCount").textContent=products.length;
+  $("publishedCount").textContent=products.filter(p=>p.is_published).length;
+  $("hiddenCount").textContent=products.filter(p=>!p.is_published).length;
+  $("productCountLabel").textContent=`${products.length} product${products.length===1?"":"s"}`;
+}
+
+function renderProducts(){
+  const list=$("productList"), empty=$("emptyProducts");
+  if(!products.length){list.innerHTML="";empty.classList.remove("hidden");return}
+  empty.classList.add("hidden");
+  list.innerHTML=products.map(p=>{
+    const img=p.images?.[0]||"";
+    return `<article class="product-row">
+      ${img?`<img class="product-cover" src="${esc(img)}" alt="${esc(p.name)}">`:`<div class="product-cover"></div>`}
+      <div class="product-info">
+        <h3>${esc(p.name)}</h3>
+        <div class="product-meta">${esc(p.category||"Collection")} · ${(p.images||[]).length} photo${(p.images||[]).length===1?"":"s"}</div>
+        <div class="badges"><span class="badge ${p.is_published?"live":""}">${p.is_published?"● Published":"● Hidden"}</span><span class="badge">Sizes: ${esc((p.sizes||[]).join(", ")||"Contact")}</span></div>
+      </div>
+      <div class="row-actions">
+        <button class="mini-btn" onclick="editProduct('${p.id}')">Edit</button>
+        <button class="mini-btn" onclick="toggleProduct('${p.id}',${!p.is_published})">${p.is_published?"Hide":"Publish"}</button>
+        <button class="mini-btn danger" onclick="deleteProduct('${p.id}')">Delete</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function openEditor(p=null){
+  editingId=p?.id||null; existingImages=[...(p?.images||[])]; newFiles=[];
+  $("editorTitle").textContent=editingId?"Edit dress":"Add new dress";
+  $("pName").value=p?.name||""; $("pCategory").value=p?.category||"Dress";
+  $("pDescription").value=p?.description||""; $("pSizes").value=(p?.sizes||[]).join(", ");
+  $("pPublished").checked=p?.is_published!==false; $("pImages").value="";
+  renderPhotos();
+  $("saveMsg").textContent="";
+  $("editorModal").classList.remove("hidden"); $("editorModal").setAttribute("aria-hidden","false");
+}
+function closeEditor(){ $("editorModal").classList.add("hidden"); $("editorModal").setAttribute("aria-hidden","true"); }
+
+$("addProductBtn").onclick=()=>openEditor();
+$("emptyAddBtn").onclick=()=>openEditor();
+$("closeEditorBtn").onclick=closeEditor;
+$("cancelEditorBtn").onclick=closeEditor;
+$("editorModal").addEventListener("click",e=>{if(e.target===$("editorModal"))closeEditor()});
+
+$("pImages").addEventListener("change",e=>{
+  const picked=[...e.target.files];
+  const allowed=4-existingImages.length;
+  if(picked.length>allowed){$("saveMsg").textContent=`You can add only ${allowed} more photo${allowed===1?"":"s"}.`;return}
+  const tooBig=picked.find(f=>f.size>5*1024*1024);
+  if(tooBig){$("saveMsg").textContent=`${tooBig.name} is larger than 5 MB.`;return}
+  newFiles.push(...picked); renderPhotos(); e.target.value="";
+});
+
+function renderPhotos(){
+  const box=$("photoPreview");
+  const existing=existingImages.map((url,i)=>`
+    <div class="photo-item"><img src="${esc(url)}" alt="Existing photo ${i+1}">
+      <button type="button" class="remove-photo" onclick="removeExisting(${i})">×</button>
+      ${i===0?'<span class="main-tag">MAIN PHOTO</span>':''}
+    </div>`).join("");
+  const fresh=newFiles.map((file,i)=>{
+    const url=URL.createObjectURL(file);
+    return `<div class="photo-item"><img src="${url}" alt="New photo ${i+1}">
+      <button type="button" class="remove-photo" onclick="removeNew(${i})">×</button>
+      ${existingImages.length===0&&i===0?'<span class="main-tag">MAIN PHOTO</span>':''}
+    </div>`;
+  }).join("");
+  box.innerHTML=existing+fresh;
+}
+function removeExisting(i){existingImages.splice(i,1);renderPhotos()}
+function removeNew(i){newFiles.splice(i,1);renderPhotos()}
+
+async function uploadFile(file){
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+  const path=`${crypto.randomUUID()}-${safe}`;
+  const {error}=await sb.storage.from("product-images").upload(path,file,{upsert:false,contentType:file.type});
+  if(error) throw error;
+  const {data}=sb.storage.from("product-images").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+$("productForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("pName").value.trim();
+  if(!name){$("saveMsg").textContent="Dress name is required.";return}
+  if(existingImages.length+newFiles.length<1){$("saveMsg").textContent="Add at least 1 photo.";return}
+  if(existingImages.length+newFiles.length>4){$("saveMsg").textContent="Maximum 4 photos per dress.";return}
+  $("saveProductBtn").disabled=true;$("saveProductBtn").textContent="Saving…";$("saveMsg").textContent="Uploading photos…";
+  try{
+    const uploaded=[...existingImages];
+    for(const file of newFiles) uploaded.push(await uploadFile(file));
+    const payload={
+      name,
+      category:$("pCategory").value.trim(),
+      description:$("pDescription").value.trim(),
+      sizes:$("pSizes").value.split(",").map(x=>x.trim()).filter(Boolean),
+      images:uploaded,
+      is_published:$("pPublished").checked
+    };
+    const result=editingId
+      ? await sb.from("products").update(payload).eq("id",editingId)
+      : await sb.from("products").insert(payload);
+    if(result.error) throw result.error;
+    $("saveMsg").textContent="Saved successfully.";
+    toast(editingId?"Dress updated":"Dress added");
+    closeEditor();
+    await loadProducts();
+  }catch(err){$("saveMsg").textContent=err.message||"Could not save product."}
+  finally{$("saveProductBtn").disabled=false;$("saveProductBtn").textContent="Save dress"}
+});
+
+function editProduct(id){const p=products.find(x=>x.id===id);if(p)openEditor(p)}
+async function toggleProduct(id,value){
+  const {error}=await sb.from("products").update({is_published:value}).eq("id",id);
+  if(error){toast(error.message);return}
+  toast(value?"Dress published":"Dress hidden"); await loadProducts();
+}
+async function deleteProduct(id){
+  const p=products.find(x=>x.id===id);
+  if(!p||!confirm(`Delete "${p.name}"?`))return;
+  const {error}=await sb.from("products").delete().eq("id",id);
+  if(error){toast(error.message);return}
+  toast("Dress deleted"); await loadProducts();
+}
+
+boot();
