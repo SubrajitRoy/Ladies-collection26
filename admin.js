@@ -197,3 +197,69 @@ async function deleteProduct(id){
 }
 
 boot();
+async function loadOrders(){
+  const list = $("orderList");
+  const empty = $("emptyOrders");
+  const label = $("orderCountLabel");
+
+  const { data, error } = await sb
+    .from("Order")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if(error){
+    console.error("Order load error:", error);
+    toast("Could not load orders");
+    return;
+  }
+
+  const orders = data || [];
+
+  label.textContent = `${orders.length} order${orders.length === 1 ? "" : "s"}`;
+
+  if(!orders.length){
+    list.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+
+  empty.classList.add("hidden");
+
+  list.innerHTML = orders.map(o => `
+    <article class="product-row">
+      <div class="product-info">
+        <h3>${esc(o.product_name || "Product")}</h3>
+
+        <div class="product-meta">
+          Customer: ${esc(o.Customer_Name || "")}
+        </div>
+
+        <div class="product-meta">
+          Mobile: ${esc(o.User_Mobile || "")}
+        </div>
+
+        <div class="product-meta">
+          Address: ${esc(o.Address || "")}
+        </div>
+
+        <div class="badges">
+          <span class="badge">
+            Size: ${esc(o.size || "Free Size")}
+          </span>
+
+          <span class="badge">
+            Qty: ${o.quantity || 0}
+          </span>
+
+          <span class="badge live">
+            ₹${Number(o.total_amount || 0).toLocaleString("en-IN")}
+          </span>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <span class="badge">${esc(o.status || "Pending")}</span>
+      </div>
+    </article>
+  `).join("");
+}
