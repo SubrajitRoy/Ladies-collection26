@@ -25,7 +25,7 @@ async function boot(){
   if(!session){ showLogin(); return; }
   if(!(await isAdmin())){ await sb.auth.signOut(); showLogin("This account is not an admin."); return; }
   showApp();
-  await Promise.all([loadSettings(),loadProducts()]);
+  await Promise.all([loadSettings(),loadProducts(),loadOrders()]);
 }
 
 function showLogin(message=""){
@@ -40,7 +40,7 @@ $("loginForm").addEventListener("submit", async e=>{
   const {error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
   if(error){$("loginMsg").textContent=error.message;return}
   if(!(await isAdmin())){await sb.auth.signOut();$("loginMsg").textContent="This account is not registered as an admin.";return}
-  showApp(); await Promise.all([loadSettings(),loadProducts()]);
+  showApp(); await Promise.all([loadSettings(),loadProducts(),loadOrders()]);
 });
 
 $("logoutBtn").onclick=async()=>{await sb.auth.signOut();location.reload()};
