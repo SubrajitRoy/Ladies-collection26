@@ -2007,15 +2007,14 @@ msg.textContent='Please wait...';
 const rows=
 cart.map(x=>({
 
-customer_name:n,
+Customer_Name:n,
+User_Mobile:ph,
+Address:ad,
+Product_Id:x.id,
 
-customer_mobile:ph,
-
-customer_address:ad,
 
 product_name:x.name,
 
-product_id:x.id,
 
 size:x.size,
 
@@ -2034,7 +2033,7 @@ try{
 
 const {error}=
 await sb
-from('Order')
+.from('Order')
 .insert(rows);
 
 
