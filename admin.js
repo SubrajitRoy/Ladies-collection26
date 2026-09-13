@@ -71,6 +71,7 @@ async function loadProducts(){
   $("publishedCount").textContent=products.filter(p=>p.is_published).length;
   $("hiddenCount").textContent=products.filter(p=>!p.is_published).length;
   $("productCountLabel").textContent=`${products.length} product${products.length===1?"":"s"}`;
+  $("pendingCount").textContent="0";
 }
 
 function renderProducts(){
@@ -84,7 +85,7 @@ function renderProducts(){
       <div class="product-info">
         <h3>${esc(p.name)}</h3>
         <div class="product-meta">${esc(p.category||"Collection")} · ${(p.images||[]).length} photo${(p.images||[]).length===1?"":"s"}</div>
-        <div class="badges"><span class="badge ${p.is_published?"live":""}">${p.is_published?"● Published":"● Hidden"}</span><span class="badge">Sizes: ${esc((p.sizes||[]).join(", ")||"Contact")}</span></div>
+        <div class="badges"><span class="badge ${p.is_published?"live":""}">${p.is_published?"● Published":"● Hidden"}</span><span class="badge">Sizes: ${esc((p.sizes||[]).join(", ")||"Contact")}</span><span class="badge">Stock: ${p.stock==null?"—":esc(p.stock)}</span></div>
       </div>
       <div class="row-actions">
         <button class="mini-btn" onclick="editProduct('${p.id}')">Edit</button>
@@ -100,6 +101,7 @@ function openEditor(p=null){
   $("editorTitle").textContent=editingId?"Edit dress":"Add new dress";
   $("pName").value=p?.name||""; $("pCategory").value=p?.category||"Dress";
   $("pDescription").value=p?.description||""; $("pSizes").value=(p?.sizes||[]).join(", "); $("pPrice").value=p?.price||""; $("pOldPrice").value=p?.old_price||"";
+  $("pStock").value=p?.stock??""; $("pAvailable").value=p?.available===false?"false":"true";
   $("pPublished").checked=p?.is_published!==false; $("pImages").value="";
   renderPhotos();
   $("saveMsg").textContent="";
@@ -197,69 +199,54 @@ async function deleteProduct(id){
 }
 
 boot();
+let allOrders=[];
+const ORDER_STATUSES=['Pending','Confirmed','Shipped','Out for Delivery','Delivered','Cancelled'];
+
 async function loadOrders(){
-  const list = $("orderList");
-  const empty = $("emptyOrders");
-  const label = $("orderCountLabel");
-
-  const { data, error } = await sb
-    .from("Order")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if(error){
-    console.error("Order load error:", error);
-    toast("Could not load orders");
-    return;
-  }
-
-  const orders = data || [];
-
-  label.textContent = `${orders.length} order${orders.length === 1 ? "" : "s"}`;
-
-  if(!orders.length){
-    list.innerHTML = "";
-    empty.classList.remove("hidden");
-    return;
-  }
-
-  empty.classList.add("hidden");
-
-  list.innerHTML = orders.map(o => `
-    <article class="product-row">
-      <div class="product-info">
-        <h3>${esc(o.product_name || "Product")}</h3>
-
-        <div class="product-meta">
-          Customer: ${esc(o.Customer_Name || "")}
-        </div>
-
-        <div class="product-meta">
-          Mobile: ${esc(o.User_Mobile || "")}
-        </div>
-
-        <div class="product-meta">
-          Address: ${esc(o.Address || "")}
-        </div>
-
-        <div class="badges">
-          <span class="badge">
-            Size: ${esc(o.size || "Free Size")}
-          </span>
-
-          <span class="badge">
-            Qty: ${o.quantity || 0}
-          </span>
-
-          <span class="badge live">
-            ₹${Number(o.total_amount || 0).toLocaleString("en-IN")}
-          </span>
-        </div>
-      </div>
-
-      <div class="row-actions">
-        <span class="badge">${esc(o.status || "Pending")}</span>
-      </div>
-    </article>
-  `).join("");
+  const list=$("orderList"),empty=$("emptyOrders"),label=$("orderCountLabel");
+  const {data,error}=await sb.from('Order').select('*').order('created_at',{ascending:false});
+  if(error){console.error('Order load error:',error);toast('Could not load orders');return;}
+  allOrders=data||[];
+  $("pendingCount").textContent=allOrders.filter(o=>(o.status||'Pending')==='Pending').length;
+  renderOrders();
 }
+function renderOrders(){
+  const list=$("orderList"),empty=$("emptyOrders"),label=$("orderCountLabel");
+  const q=($("orderSearch")?.value||'').trim().toLowerCase(),f=$("orderFilter")?.value||'All';
+  const rows=allOrders.filter(o=>{
+    const text=`${o.Customer_Name||''} ${o.User_Mobile||''} ${o.order_code||''} ${o.id||''} ${o.product_name||''}`.toLowerCase();
+    return (!q||text.includes(q)) && (f==='All'||String(o.status||'Pending')===f);
+  });
+  label.textContent=`${rows.length} of ${allOrders.length} order${allOrders.length===1?'':'s'}`;
+  if(!rows.length){list.innerHTML='';empty.classList.remove('hidden');return;} empty.classList.add('hidden');
+  list.innerHTML=rows.map(o=>{
+    const image=o.product_image||''; const oid=o.order_code||('LC'+o.id); const created=o.created_at?new Date(o.created_at).toLocaleString('en-IN'):'';
+    const delivery=o.expected_delivery?new Date(o.expected_delivery).toLocaleDateString('en-IN'):'Not set';
+    return `<article class="order-card product-row" onclick="openOrderDetail(${Number(o.id)})">
+      ${image?`<img class="product-cover order-cover" src="${esc(image)}" alt="${esc(o.product_name||'Product')}">`:`<div class="product-cover order-cover"></div>`}
+      <div class="product-info"><h3>${esc(o.product_name||'Product')}</h3>
+      <div class="product-meta"><b>Order:</b> ${esc(oid)}</div><div class="product-meta"><b>Customer:</b> ${esc(o.Customer_Name||'')}</div>
+      <div class="product-meta"><b>Mobile:</b> ${esc(o.User_Mobile||'')}</div><div class="product-meta"><b>Date:</b> ${esc(created)}</div>
+      <div class="badges"><span class="badge">Size: ${esc(o.size||'Free Size')}</span><span class="badge">Qty: ${esc(o.quantity||0)}</span><span class="badge live">₹${Number(o.total_amount||0).toLocaleString('en-IN')}</span><span class="badge">Delivery: ${esc(delivery)}</span></div></div>
+      <div class="row-actions order-actions" onclick="event.stopPropagation()"><label class="order-status-label">Status<select class="order-status" onchange="updateOrderStatus(${Number(o.id)},this.value)">${ORDER_STATUSES.map(s=>`<option value="${esc(s)}" ${String(o.status||'Pending')===s?'selected':''}>${esc(s)}</option>`).join('')}</select></label></div>
+    </article>`;
+  }).join('');
+}
+function openOrderDetail(id){
+  const o=allOrders.find(x=>Number(x.id)===Number(id)); if(!o)return;
+  const image=o.product_image||''; const oid=o.order_code||('LC'+o.id); const delivery=o.expected_delivery?new Date(o.expected_delivery).toLocaleDateString('en-IN'):'Not set';
+  $("orderDetailBody").innerHTML=`<h2>Order #${esc(oid)}</h2><div class="detail-layout">${image?`<img class="detail-image" src="${esc(image)}" alt="${esc(o.product_name||'Product')}">`:''}<div><h3>${esc(o.product_name||'Product')}</h3><p><b>Customer:</b> ${esc(o.Customer_Name||'')}</p><p><b>Mobile:</b> ${esc(o.User_Mobile||'')}</p><p><b>Address:</b> ${esc(o.Address||'')}</p><p><b>Size:</b> ${esc(o.size||'Free Size')} &nbsp; <b>Qty:</b> ${esc(o.quantity||0)}</p><p><b>Amount:</b> ₹${Number(o.total_amount||0).toLocaleString('en-IN')}</p><p><b>Expected delivery:</b> ${esc(delivery)}</p><label class="order-status-label">Update status<select class="order-status" onchange="updateOrderStatus(${Number(o.id)},this.value)">${ORDER_STATUSES.map(s=>`<option value="${esc(s)}" ${String(o.status||'Pending')===s?'selected':''}>${esc(s)}</option>`).join('')}</select></label></div></div>`;
+  $("orderDetailModal").classList.remove('hidden');
+}
+async function updateOrderStatus(id,status){
+  const {error}=await sb.from('Order').update({status}).eq('id',id);
+  if(error){console.error('Order status update error:',error);toast('Could not update order. Check UPDATE policy.');await loadOrders();return;}
+  toast('Order status updated');await loadOrders();openOrderDetail(id);
+}
+
+$("orderSearch")?.addEventListener('input',renderOrders);
+$("orderFilter")?.addEventListener('change',renderOrders);
+$("refreshOrdersBtn")?.addEventListener('click',loadOrders);
+$("closeOrderDetail")?.addEventListener('click',()=>$("orderDetailModal").classList.add('hidden'));
+$("orderDetailModal")?.addEventListener('click',e=>{if(e.target===$("orderDetailModal"))$("orderDetailModal").classList.add('hidden')});
+
