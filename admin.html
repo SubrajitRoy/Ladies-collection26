@@ -51,6 +51,7 @@
         <div class="stat-card"><span>Total products</span><strong id="totalCount">0</strong></div>
         <div class="stat-card"><span>Published</span><strong id="publishedCount">0</strong></div>
         <div class="stat-card"><span>Hidden</span><strong id="hiddenCount">0</strong></div>
+        <div class="stat-card"><span>Pending</span><strong id="pendingCount">0</strong></div>
       </section>
 
       <section class="panel settings-panel">
@@ -94,24 +95,14 @@
     <div id="orderCountLabel" class="muted small"></div>
   </div>
 
-  <div id="orderList" class="product-list"></div>
-
-  <div id="emptyOrders" class="empty hidden">
-    <div class="empty-icon">🛍️</div>
-    <h3>No orders yet</h3>
-    <p>Customer orders will appear here.</p>
-  </div>
-</section>
-<section class="panel">
-  <div class="panel-heading">
-    <div>
-      <p class="eyebrow">CUSTOMER ORDERS</p>
-      <h2>Orders</h2>
+  <div class="order-toolbar">
+      <input id="orderSearch" placeholder="Search customer, mobile or order ID">
+      <select id="orderFilter">
+        <option value="All">All</option><option value="Pending">Pending</option><option value="Confirmed">Confirmed</option><option value="Shipped">Shipped</option><option value="Out for Delivery">Out for Delivery</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
+      </select>
+      <button id="refreshOrdersBtn" class="mini-btn">↻ Refresh</button>
     </div>
-    <div id="orderCountLabel" class="muted small"></div>
-  </div>
-
-  <div id="orderList" class="product-list"></div>
+    <div id="orderList" class="product-list"></div>
 
   <div id="emptyOrders" class="empty hidden">
     <div class="empty-icon">🛍️</div>
@@ -119,6 +110,7 @@
     <p>Customer orders will appear here.</p>
   </div>
 </section>
+
     </main>
   </div>
 
@@ -156,6 +148,18 @@
           <input id="pSizes" placeholder="S, M, L, XL, XXL">
         </label>
 
+        <div class="two-col">
+          <label>Stock / Qty
+            <input id="pStock" type="number" min="0" placeholder="e.g. 10">
+          </label>
+          <label>Availability
+            <select id="pAvailable">
+              <option value="true">Available</option>
+              <option value="false">Out of Stock</option>
+            </select>
+          </label>
+        </div>
+
         <div class="upload-box">
           <div class="upload-head">
             <div>
@@ -186,6 +190,13 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="admin.js"></script>
+  
+<div id="orderDetailModal" class="modal hidden">
+  <div class="modal-card order-detail-modal">
+    <button id="closeOrderDetail" class="modal-close">×</button>
+    <div id="orderDetailBody"></div>
+  </div>
+</div>
+<script src="admin.js"></script>
 </body>
 </html>
