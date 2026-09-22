@@ -120,7 +120,7 @@
       <div class="modal-header">
         <p class="eyebrow">PRODUCT</p>
         <h2 id="editorTitle">Add new dress</h2>
-        <p class="muted">Fill in the details and add up to 4 photos.</p>
+        <p class="muted">Add one product with multiple colour variants. Each colour can have as many photos as you need.</p>
       </div>
 
       <form id="productForm">
@@ -163,15 +163,13 @@
         <div class="upload-box">
           <div class="upload-head">
             <div>
-              <strong>Dress photos</strong>
-              <span>Up to 4 photos. The first photo is the main photo.</span>
+              <strong>Colour variants</strong>
+              <span>Add each colour once. Each colour can have as many photos as you need.</span>
             </div>
-            <label class="btn outline upload-btn">＋ Choose photos
-              <input id="pImages" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden>
-            </label>
+            <button type="button" id="addVariantBtn" class="btn outline upload-btn">＋ Add colour</button>
           </div>
-          <div id="photoPreview" class="photo-grid"></div>
-          <p class="hint">Tip: use clear vertical product photos. Maximum 5 MB per photo.</p>
+          <div id="variantList"></div>
+          <p class="hint">Example: Red, White, Black. Customers will select a colour and see/order that colour's photos. No fixed photo-count limit. Upload as many photos as you need.</p>
         </div>
 
         <label class="switch-row">
