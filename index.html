@@ -877,6 +877,43 @@ color:#d23b3b
 
 
 /* =========================================================
+   ORDER DETAILS / FLIPKART STYLE
+========================================================= */
+.order-clickable{cursor:pointer;transition:.2s}
+.order-clickable:hover{border-color:#f32668;box-shadow:0 5px 16px #0000000d;transform:translateY(-1px)}
+.orderClickHint{font-size:9px;color:#f32668;font-weight:700;margin-top:9px}
+.statusBadge{display:inline-block;padding:5px 8px;border-radius:20px;font-size:9px;font-weight:800;background:#fff1f5;color:#f32668}
+.statusBadge.delivered{background:#ecfaf3;color:#16824e}
+.statusBadge.cancelled{background:#fff0f0;color:#d23b3b}
+.orderDetailBox{max-width:650px}
+.orderDetailTitle{font-size:20px;margin:0 0 5px}
+.orderDetailSub{font-size:10px;color:#7b8490;margin:0 0 15px}
+.orderDetailProduct{display:flex;gap:12px;padding:12px;border:1px solid #e8ebef;border-radius:10px}
+.orderDetailProduct img{width:92px;height:110px;object-fit:cover;border-radius:8px;background:#f5f5f5}
+.orderDetailProduct h3{font-size:14px;margin:2px 0 8px}
+.orderDetailProduct p{font-size:10px;color:#697384;margin:5px 0}
+.orderDetailProduct strong{font-size:16px}
+.orderInfoGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.orderInfoGrid div{background:#f8f9fb;border-radius:8px;padding:9px}
+.orderInfoGrid small{display:block;color:#818997;font-size:8px;margin-bottom:4px}
+.orderInfoGrid b{font-size:10px;word-break:break-word}
+.orderAddress{margin-top:10px;background:#f8f9fb;border-radius:8px;padding:10px}
+.orderAddress small{display:block;color:#818997;font-size:8px;margin-bottom:4px}
+.orderAddress p{font-size:10px;line-height:1.5;margin:0;color:#394456;white-space:pre-line}
+.orderTimelineTitle{font-size:13px;font-weight:800;margin:18px 0 4px}
+.cancelledTrack{margin-top:14px;padding:12px;border-radius:8px;background:#fff0f0;color:#d23b3b;font-size:11px;font-weight:700}
+
+/* Colour variants */
+.colourTitle{font-size:14px;font-weight:700;margin:18px 0 8px}
+.colourList{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 8px}
+.colourOption{width:76px;min-width:76px;border:1px solid #dfe3e8;border-radius:8px;background:#fff;padding:4px;overflow:hidden}
+.colourOption.sel{border:2px solid #f32668;padding:3px;background:#fff4f7}
+.colourOption img{width:66px;height:70px;object-fit:cover;border-radius:5px;display:block}
+.colourOption span{display:block;font-size:9px;font-weight:700;text-align:center;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.colourOption small{display:block;font-size:7px;color:#7b8490;text-align:center;margin-top:2px}
+.colourHint{font-size:10px;color:#7b8490;margin:0 0 6px}
+
+/* =========================================================
    TABLET
 ========================================================= */
 
@@ -1657,6 +1694,12 @@ clear and convenient.
 
 <p id="dd" class="description"></p>
 
+<div id="colourSection" class="hidden">
+<div class="colourTitle">Choose Colour</div>
+<p class="colourHint">Tap a colour photo to select that exact colour.</p>
+<div id="colourList" class="colourList"></div>
+</div>
+
 <h4>Available Sizes</h4>
 
 <div id="sizes" class="sizesBtn"></div>
@@ -1895,6 +1938,8 @@ let settings={whatsapp_number:C.wa};
 let current=null;
 let size='';
 let qtyN=1;
+let selectedColor='';
+let selectedVariantImages=[];
 
 let cart=JSON.parse(
 localStorage.getItem('ladies_cart')||'[]'
@@ -1985,6 +2030,31 @@ value;
 return value;
 }
 
+
+/* =====================================================
+   PRODUCT VARIANTS HELPERS
+===================================================== */
+
+function getVariants(p){
+  if(!p || !Array.isArray(p.variants)) return [];
+  return p.variants.filter(v=>v && String(v.color||'').trim() && Array.isArray(v.images) && v.images.length);
+}
+
+function variantImages(v){
+  return Array.isArray(v?.images) ? v.images.filter(Boolean) : [];
+}
+
+function allProductImages(p){
+  const vars=getVariants(p);
+  if(vars.length){
+    return vars.flatMap(v=>variantImages(v));
+  }
+  return Array.isArray(p?.images) ? p.images : [];
+}
+
+function selectedImage(){
+  return selectedVariantImages.length ? selectedVariantImages[0] : img(current);
+}
 
 /* =====================================================
    LOAD PRODUCTS
@@ -2713,187 +2783,81 @@ updateWishCount();
 
 function openP(id){
 
-current=
-products.find(
-p=>String(p.id)===String(id)
-);
+current=products.find(p=>String(p.id)===String(id));
+if(!current) return;
 
-
-if(!current)
-return;
-
-
-/* Stop background scrolling */
 document.body.classList.add('product-open');
-
-
-/* Selected size */
-
-size=
-(current.sizes&&current.sizes.length)
-?current.sizes[0]
-:'Free Size';
-
-
+size=(current.sizes&&current.sizes.length)?current.sizes[0]:'Free Size';
 qtyN=1;
 
+const variants=getVariants(current);
+selectedColor=variants.length ? String(variants[0].color) : '';
+selectedVariantImages=variants.length ? variantImages(variants[0]) : [];
 
-/* Category */
-
-document.getElementById('dc')
-.textContent=
-current.category||'COLLECTION';
-
-
-/* Product name */
-
-document.getElementById('dn')
-.textContent=
-current.name||'';
-
-
-/* Description */
-
-document.getElementById('dd')
-.textContent=
-current.description||
-'Beautiful ladies collection.';
-
-
-/* Price */
+document.getElementById('dc').textContent=current.category||'COLLECTION';
+document.getElementById('dn').textContent=current.name||'';
+document.getElementById('dd').textContent=current.description||'Beautiful ladies collection.';
 
 let v=price(current);
 let o=old(current);
+document.getElementById('dp').innerHTML=v?`${money(v)}${o?`<del>${money(o)}</del>`:''}`:'<span style="font-size:13px;color:#777">Price will be updated soon</span>';
 
+let out=Number(current.stock)===0 || current.available===false;
+document.getElementById('stockDetails').textContent=out?'● Out of Stock':'● Available';
+document.getElementById('stockDetails').style.color=out?'#d23b3b':'#16824e';
+document.getElementById('productAddBtn').disabled=out;
+document.getElementById('productBuyBtn').disabled=out;
 
-document.getElementById('dp').innerHTML=
+renderColourOptions();
+renderProductImages();
 
-v
-?`${money(v)}
-${
-o
-?`<del>${money(o)}</del>`
-:''
-}`
-:
-
-'<span style="font-size:13px;color:#777">Price will be updated soon</span>';
-
-
-/* Stock */
-
-let out=
-Number(current.stock)===0 ||
-current.available===false;
-
-
-document.getElementById('stockDetails')
-.textContent=
-out
-?'● Out of Stock'
-:'● Available';
-
-
-document.getElementById('stockDetails')
-.style.color=
-out
-?'#d23b3b'
-:'#16824e';
-
-
-/* Disable buttons if out of stock */
-
-document.getElementById('productAddBtn')
-.disabled=out;
-
-document.getElementById('productBuyBtn')
-.disabled=out;
-
-
-/* Main image */
-
-document.getElementById('dm').src=
-img(current);
-
-
-/* All images */
-
-let images=
-Array.isArray(current.images)
-?current.images
-:[];
-
-
-/* If only one/no image */
-
-if(!images.length){
-
-images=[img(current)];
-
+let productSizes=Array.isArray(current.sizes)&&current.sizes.length?current.sizes:['Free Size'];
+document.getElementById('sizes').innerHTML=productSizes.map((s,i)=>`<button type="button" class="${i?'':'sel'}" onclick="selectSize(this,'${esc(s)}')">${esc(s)}</button>`).join('');
+document.getElementById('qn').textContent='1';
+document.getElementById('pm').classList.remove('hidden');
+document.getElementById('pm').querySelector('.productBox').scrollTop=0;
 }
 
+function renderColourOptions(){
+  const section=document.getElementById('colourSection');
+  const list=document.getElementById('colourList');
+  const variants=getVariants(current);
+  if(!variants.length){
+    section.classList.add('hidden');
+    list.innerHTML='';
+    return;
+  }
+  section.classList.remove('hidden');
+  list.innerHTML=variants.map((v,i)=>{
+    const images=variantImages(v);
+    const first=normalizeImageValue(images[0]);
+    const active=String(v.color)===String(selectedColor);
+    return `<button type="button" class="colourOption ${active?'sel':''}" onclick="selectColour(${i})">
+      <img src="${esc(first)}" alt="${esc(v.color)}" onerror="this.onerror=null;this.src='assets/w1.jpeg';">
+      <span>${esc(v.color)}</span>
+      <small>${images.length} photo${images.length===1?'':'s'}</small>
+    </button>`;
+  }).join('');
+}
 
-/* Thumbnails */
+function selectColour(index){
+  const variants=getVariants(current);
+  const v=variants[index];
+  if(!v) return;
+  selectedColor=String(v.color);
+  selectedVariantImages=variantImages(v);
+  renderColourOptions();
+  renderProductImages();
+}
 
-document.getElementById('thumbs').innerHTML=
-
-images.map((x,i)=>`
-
-<button
-class="${i?'':'sel'}"
-type="button"
-onclick="selectProductImage(this,'${esc(normalizeImageValue(x))}')">
-
-<img
-src="${esc(normalizeImageValue(x))}"
-alt="Product photo ${i+1}"
-onerror="this.onerror=null;this.src='assets/w1.jpeg';">
-
-</button>
-
-`).join('');
-
-
-/* Sizes */
-
-let productSizes=
-Array.isArray(current.sizes)&&current.sizes.length
-?current.sizes
-:['Free Size'];
-
-
-document.getElementById('sizes').innerHTML=
-
-productSizes.map((s,i)=>`
-
-<button
-type="button"
-class="${i?'':'sel'}"
-onclick="selectSize(this,'${esc(s)}')">
-
-${esc(s)}
-
-</button>
-
-`).join('');
-
-
-document.getElementById('qn')
-.textContent='1';
-
-
-/* Open product page */
-
-document.getElementById('pm')
-.classList.remove('hidden');
-
-
-/* Start at top */
-
-document.getElementById('pm')
-.querySelector('.productBox')
-.scrollTop=0;
-
+function renderProductImages(){
+  let images=selectedVariantImages.length?selectedVariantImages:allProductImages(current);
+  if(!images.length) images=[img(current)];
+  document.getElementById('dm').src=normalizeImageValue(images[0]);
+  document.getElementById('thumbs').innerHTML=images.map((x,i)=>`
+    <button class="${i?'':'sel'}" type="button" onclick="selectProductImage(this,'${esc(normalizeImageValue(x))}')">
+      <img src="${esc(normalizeImageValue(x))}" alt="Product photo ${i+1}" onerror="this.onerror=null;this.src='assets/w1.jpeg';">
+    </button>`).join('');
 }
 
 
@@ -3037,7 +3001,8 @@ return;
 add(
 current,
 size,
-qtyN
+qtyN,
+selectedColor
 );
 
 
@@ -3107,41 +3072,21 @@ setTimeout(
 
 function add(p,s,q){
 
-let k=
-p.id+'|'+s;
-
-
-let x=
-cart.find(
-a=>a.k===k
-);
-
+let color=String(arguments[3]??'');
+let key=p.id+'|'+s+'|'+color;
+let x=cart.find(a=>a.k===key);
 
 if(x){
-
-x.q+=q;
-
+  x.q+=q;
 }else{
-
-cart.push({
-
-k,
-id:p.id,
-name:p.name,
-size:s,
-q,
-price:price(p),
-image:img(p)
-
-});
-
+  let chosenImage=color && Array.isArray(p.variants)
+    ? (p.variants.find(v=>String(v.color)===color)?.images?.[0] || img(p))
+    : img(p);
+  cart.push({k:key,id:p.id,name:p.name,size:s,color,q,price:price(p),image:normalizeImageValue(chosenImage)});
 }
 
-
 save();
-
 toast('Added to cart ✓');
-
 }
 
 
@@ -3263,7 +3208,7 @@ onerror="this.onerror=null;this.src='assets/w1.jpeg';">
 <b>${esc(x.name)}</b>
 
 <small>
-Size: ${esc(x.size)} • Qty: ${x.q}
+Size: ${esc(x.size)}${x.color?` • Colour: ${esc(x.color)}`:''} • Qty: ${x.q}
 </small>
 
 <strong>
@@ -3349,7 +3294,8 @@ return;
 add(
 current,
 size,
-qtyN
+qtyN,
+selectedColor
 );
 
 
@@ -3454,6 +3400,7 @@ Address:ad,
 Product_Id:x.id,
 product_name:x.name,
 size:x.size,
+color:x.color||null,
 quantity:x.q,
 price:x.price||0,
 total_amount:(x.price||0)*x.q,
@@ -3606,195 +3553,111 @@ ${esc(s)}
 
 async function trackOrders(){
 
-const phone=
-document.getElementById('trackPhone')
-.value.trim();
+const phone=document.getElementById('trackPhone').value.trim();
+const msg=document.getElementById('trackMsg');
+const box=document.getElementById('trackResults');
 
-const msg=
-document.getElementById('trackMsg');
-
-const box=
-document.getElementById('trackResults');
-
-
-if(
-phone.replace(/\D/g,'').length<10
-){
-
-msg.style.color='#d23b3b';
-
-msg.textContent=
-'Enter a valid mobile number.';
-
-return;
-
+if(phone.replace(/\D/g,'').length<10){
+  msg.style.color='#d23b3b';
+  msg.textContent='Enter a valid mobile number.';
+  return;
 }
 
-
+localStorage.setItem('ladies_order_phone',phone);
 msg.style.color='#596170';
 msg.textContent='Searching orders…';
-
 box.innerHTML='';
 
-
-const {data,error}=
-await sb.rpc(
-'track_orders',
-{
-p_mobile:phone
-}
-);
-
-
+const {data,error}=await sb.rpc('track_orders',{p_mobile:phone});
 if(error){
-
-console.error(error);
-
-msg.style.color='#d23b3b';
-
-msg.textContent=
-'Order tracking setup is incomplete. Please run the provided Supabase setup SQL.';
-
-return;
-
+  console.error(error);
+  msg.style.color='#d23b3b';
+  msg.textContent='Order tracking setup is incomplete. Please run the provided Supabase setup SQL.';
+  return;
 }
-
 
 const rows=data||[];
-
-
 if(!rows.length){
-
-msg.style.color='#7b8490';
-
-msg.textContent=
-'No orders found for this mobile number.';
-
-return;
-
+  msg.style.color='#7b8490';
+  msg.textContent='No orders found for this mobile number.';
+  return;
 }
 
-
-msg.textContent=
-`${rows.length} order${rows.length===1?'':'s'} found.`;
-
-
-box.innerHTML=
-
-rows.map(o=>{
-
-const delivery=
-o.expected_delivery
-?new Date(
-o.expected_delivery
-).toLocaleDateString('en-IN')
-:'Not set';
-
-
-const created=
-o.created_at
-?new Date(
-o.created_at
-).toLocaleDateString('en-IN')
-:'';
-
-
-return `
-
-<article class="trackOrder">
-
-<div class="trackHead">
-
-<div class="trackId">
-Order #${esc(
-o.order_code||('LC'+o.id)
-)}
-</div>
-
-<div class="trackDate">
-${esc(created)}
-</div>
-
-</div>
-
-
-<div class="trackProduct">
-
-<img
-src="${esc(
-o.product_image||'assets/w1.jpeg'
-)}"
-onerror="this.onerror=null;this.src='assets/w1.jpeg';">
-
-
-<div>
-
-<b>
-${esc(
-o.product_name||'Product'
-)}
-</b>
-
-<small>
-Size:
-${esc(
-o.size||'Free Size'
-)}
-· Qty:
-${esc(
-o.quantity||0
-)}
-</small>
-
-<small>
-${money(
-o.total_amount||0
-)}
-</small>
-
-</div>
-
-</div>
-
-
-${statusSteps(
-o.status||'Pending'
-)}
-
-
-<div class="trackMeta">
-
-<div>
-
-<small>Status</small>
-
-<b>
-${esc(
-o.status||'Pending'
-)}
-</b>
-
-</div>
-
-
-<div>
-
-<small>Expected delivery</small>
-
-<b>
-${esc(delivery)}
-</b>
-
-</div>
-
-</div>
-
-</article>
-
-`;
-
+msg.textContent=`${rows.length} order${rows.length===1?'':'s'} found.`;
+box.innerHTML=rows.map(o=>{
+  const delivery=o.expected_delivery?new Date(o.expected_delivery).toLocaleDateString('en-IN'):'Not set';
+  const created=o.created_at?new Date(o.created_at).toLocaleDateString('en-IN'):'';
+  const st=o.status||'Pending';
+  const badgeClass=st==='Delivered'?'delivered':st==='Cancelled'?'cancelled':'';
+  return `<article class="trackOrder order-clickable" onclick="openOrderDetails(${Number(o.id)})">
+    <div class="trackHead">
+      <div><div class="trackId">Order #${esc(o.order_code||('LC'+o.id))}</div><div class="trackDate">${esc(created)}</div></div>
+      <span class="statusBadge ${badgeClass}">${esc(st)}</span>
+    </div>
+    <div class="trackProduct">
+      <img src="${esc(o.product_image||'assets/w1.jpeg')}" onerror="this.onerror=null;this.src='assets/w1.jpeg';">
+      <div>
+        <b>${esc(o.product_name||'Product')}</b>
+        <small>Size: ${esc(o.size||'Free Size')}${o.color?` · Colour: ${esc(o.color)}`:''} · Qty: ${esc(o.quantity||0)}</small>
+        <small>${money(o.total_amount||0)}</small>
+      </div>
+    </div>
+    ${st==='Cancelled'?'<div class="cancelledTrack">Order Cancelled</div>':statusSteps(st)}
+    <div class="trackMeta">
+      <div><small>Status</small><b>${esc(st)}</b></div>
+      <div><small>Expected delivery</small><b>${esc(delivery)}</b></div>
+    </div>
+    <div class="orderClickHint">Tap to see complete order details →</div>
+  </article>`;
 }).join('');
+}
 
+async function openOrderDetails(orderId){
+  const phone=localStorage.getItem('ladies_order_phone')||document.getElementById('trackPhone').value.trim();
+  if(!phone) return;
+  const {data,error}=await sb.rpc('track_orders',{p_mobile:phone});
+  if(error){ toast('Could not load order details'); return; }
+  const order=(data||[]).find(o=>String(o.id)===String(orderId));
+  if(!order){ toast('Order not found'); return; }
+  renderOrderDetails(order);
+  document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+function renderOrderDetails(o){
+  const st=o.status||'Pending';
+  const created=o.created_at?new Date(o.created_at).toLocaleString('en-IN'):'Not available';
+  const delivery=o.expected_delivery?new Date(o.expected_delivery).toLocaleDateString('en-IN'):'Not set';
+  const badgeClass=st==='Delivered'?'delivered':st==='Cancelled'?'cancelled':'';
+  const image=o.product_image||'assets/w1.jpeg';
+  document.getElementById('orderDetailContent').innerHTML=`
+    <h2 class="orderDetailTitle">📦 Order Details</h2>
+    <p class="orderDetailSub">Order #${esc(o.order_code||('LC'+o.id))} · ${esc(created)}</p>
+    <div style="margin-bottom:12px"><span class="statusBadge ${badgeClass}">${esc(st)}</span></div>
+
+    <div class="orderDetailProduct">
+      <img src="${esc(image)}" onerror="this.onerror=null;this.src='assets/w1.jpeg';">
+      <div>
+        <h3>${esc(o.product_name||'Product')}</h3>
+        <p>Size: <b>${esc(o.size||'Free Size')}</b></p>
+        ${o.color?`<p>Colour: <b>${esc(o.color)}</b></p>`:''}
+        <p>Quantity: <b>${esc(o.quantity||0)}</b></p>
+        <p>Price: <b>${money(o.price||0)}</b></p>
+        <strong>${money(o.total_amount||0)}</strong>
+      </div>
+    </div>
+
+    <div class="orderInfoGrid">
+      <div><small>Customer</small><b>${esc(o.Customer_Name||'Not available')}</b></div>
+      <div><small>Mobile</small><b>${esc(o.User_Mobile||'Not available')}</b></div>
+      <div><small>Order date</small><b>${esc(created)}</b></div>
+      <div><small>Expected delivery</small><b>${esc(delivery)}</b></div>
+    </div>
+
+    <div class="orderAddress"><small>Delivery Address</small><p>${esc(o.Address||'Not available')}</p></div>
+
+    <div class="orderTimelineTitle">Order Status</div>
+    ${st==='Cancelled'?'<div class="cancelledTrack">This order has been cancelled.</div>':statusSteps(st)}
+  `;
 }
 
 
@@ -4163,6 +4026,17 @@ style="font-size:10px;margin-top:8px">
 
 </div>
 
+</div>
+
+<!-- =====================================================
+     ORDER DETAILS MODAL
+===================================================== -->
+
+<div id="orderDetailModal" class="modal hidden">
+<div class="box orderDetailBox">
+<button class="close" onclick="closeM('orderDetailModal')">×</button>
+<div id="orderDetailContent"></div>
+</div>
 </div>
 
 </body>
