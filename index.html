@@ -41,8 +41,8 @@ border-radius:5px;overflow:hidden
 width:52px;border:0;background:#f32668;color:#fff;font-size:23px
 }
 
-.actions{margin-left:auto;display:flex;gap:22px}
-.actions button{background:none;border:0;font-weight:600}
+.actions{margin-left:auto;display:flex;gap:14px;align-items:center}
+.actions button{background:none;border:0;font-weight:600;white-space:nowrap}
 .cart{position:relative}
 .cart b{
 position:absolute;top:-9px;right:-9px;background:#f32668;color:#fff;
@@ -1355,6 +1355,10 @@ font-size:12px
 
 <button onclick="openWishlist()">
 ♡ <span>Wishlist</span>
+</button>
+
+<button onclick="openOrders()">
+📦 <span>My Orders</span>
 </button>
 
 <button class="cart" onclick="openCart()">
@@ -2749,11 +2753,18 @@ setTimeout(
 
 function openOrders(){
 
-document.getElementById('om')
-.classList.remove('hidden');
+const modal=document.getElementById('om');
+const input=document.getElementById('trackPhone');
+const savedPhone=localStorage.getItem('ladies_order_phone')||'';
 
-document.getElementById('trackPhone')
-.focus();
+modal.classList.remove('hidden');
+
+if(savedPhone){
+  input.value=savedPhone;
+  trackOrders(true);
+}else{
+  input.focus();
+}
 
 }
 
@@ -3368,6 +3379,8 @@ return;
 
 }
 
+/* Remember the mobile number for My Orders on this device */
+localStorage.setItem('ladies_order_phone',ph);
 
 btn.disabled=true;
 btn.style.opacity='.6';
@@ -3551,7 +3564,7 @@ ${esc(s)}
 }
 
 
-async function trackOrders(){
+async function trackOrders(silent=false){
 
 const phone=document.getElementById('trackPhone').value.trim();
 const msg=document.getElementById('trackMsg');
@@ -3565,7 +3578,7 @@ if(phone.replace(/\D/g,'').length<10){
 
 localStorage.setItem('ladies_order_phone',phone);
 msg.style.color='#596170';
-msg.textContent='Searching orders…';
+msg.textContent=silent?'':'Searching orders…';
 box.innerHTML='';
 
 const {data,error}=await sb.rpc('track_orders',{p_mobile:phone});
@@ -4009,12 +4022,15 @@ placeholder="Mobile number">
 class="order"
 onclick="trackOrders()">
 
-Track My Orders
+Track / Refresh My Orders
 
 </button>
 
 </div>
 
+<p style="font-size:9px;color:#7b8490;margin:8px 0 0">
+Your order status is updated from the store's Admin Panel. Tap an order to see full details.
+</p>
 
 <div
 id="trackMsg"
